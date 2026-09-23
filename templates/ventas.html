@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block refresh %}<meta http-equiv="refresh" content="6">{% endblock %}
+{% block content %}
+
+<div class="stats">
+  <div class="stat"><div class="valor">{{ stats.ventas_hoy }}</div><div class="etiqueta">Ventas de hoy</div></div>
+  <div class="stat"><div class="valor">{{ stats.pendientes_caja }}</div><div class="etiqueta">Pendientes de caja</div></div>
+  <div class="stat"><div class="valor">{{ stats.pendientes_facturacion }}</div><div class="etiqueta">Pendientes de facturación</div></div>
+  <div class="stat"><div class="valor">{{ stats.facturadas }}</div><div class="etiqueta">Facturadas</div></div>
+  <div class="stat"><div class="valor">${{ '{:,.0f}'.format(stats.valor_vendido) }}</div><div class="etiqueta">Valor vendido</div></div>
+</div>
+
+<div class="card">
+  <h2>Ventas <span class="muted" style="font-weight:normal;">(se actualiza sola cada 6s)</span></h2>
+  <table>
+    <tr>
+      <th>#</th><th>Fecha venta</th><th>Cliente / Titular</th><th>Pasajeros</th>
+      <th>Valor</th><th>Estado</th><th>Asesor</th><th></th>
+    </tr>
+    {% for v in ventas %}
+    <tr>
+      <td>{{ v.id }}</td>
+      <td>{{ v.fecha_venta.strftime('%d/%m/%Y') if v.fecha_venta else '' }}</td>
+      <td>{{ v.titular_nombre or '—' }}</td>
+      <td>{{ v.pax }}</td>
+      <td>${{ '{:,.0f}'.format(v.valor_venta_real or 0) }}</td>
+      <td><span class="badge badge-{{ v.estado }}">{{ v.estado_label }}</span></td>
+      <td>{{ v.asesor.nombre if v.asesor else '' }}</td>
+      <td><a class="btn" href="{{ url_for('venta_detalle', venta_id=v.id) }}">Ver</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="muted">Todavía no hay ventas registradas.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

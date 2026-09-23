@@ -1,0 +1,4 @@
+.secret_key.dev
+agencia.db
+__pycache__/
+*.pyc

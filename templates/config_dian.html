@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Config. exportables{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>¿Qué campos van en cada archivo?</h2>
+  <p class="muted">Contador y tributario (DIAN) son dos configuraciones independientes, pero ambas leen exactamente la misma información de la venta y los pasajeros — marcar o desmarcar aquí NO crea ningún campo de captura nuevo, solo decide qué columnas salen en cada CSV.</p>
+  <form method="post">
+    <table>
+      <tr><th>Campo</th><th style="text-align:center;">Contador</th><th style="text-align:center;">Tributario (DIAN)</th></tr>
+      {% for c in campos %}
+      <tr>
+        <td>{{ c.etiqueta }}</td>
+        <td style="text-align:center;">
+          <input type="checkbox" name="campo_contador" value="{{ c.campo }}" style="width:auto;" {% if c.incluir_contador %}checked{% endif %}>
+        </td>
+        <td style="text-align:center;">
+          <input type="checkbox" name="campo_dian" value="{{ c.campo }}" style="width:auto;" {% if c.incluir_dian %}checked{% endif %}>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+    <button type="submit" style="margin-top:14px;">Guardar configuración</button>
+  </form>
+</div>
+{% endblock %}

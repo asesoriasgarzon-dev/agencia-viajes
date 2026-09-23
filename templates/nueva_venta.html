@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar viaje' if venta else 'Nuevo viaje' }}{% endblock %}
+{% block content %}
+
+{% if venta %}
+<div class="card" style="background:#fff4e0;">
+  <strong>Editando borrador #{{ venta.id }}.</strong>
+  <span class="muted">Mientras siga en borrador puedes corregir todo. En cuanto la envíes a caja, la información financiera queda fija.</span>
+</div>
+{% endif %}
+
+<form method="post" action="{{ url_for('venta_editar', venta_id=venta.id) if venta else url_for('venta_nueva') }}">
+  <div class="card">
+    <h2>Datos de la venta</h2>
+    <div class="grid2">
+      <div>
+        <label>Fecha de venta</label>
+        <input type="date" name="fecha_venta" value="{{ venta.fecha_venta.isoformat() if venta and venta.fecha_venta else hoy }}">
+      </div>
+      <div>
+        <label>Sede</label>
+        <input type="text" name="sede" list="lista-sedes" autocomplete="off" value="{{ venta.sede if venta else '' }}">
+      </div>
+      <div>
+        <label>Origen de la venta</label>
+        <input type="text" name="origen_venta" list="lista-origenes" autocomplete="off" placeholder="whatsapp, referido..." value="{{ venta.origen_venta if venta else '' }}">
+      </div>
+      <div>
+        <label>Concepto</label>
+        <select name="concepto">
+          {% for c in conceptos %}<option value="{{ c }}" {% if venta and venta.concepto == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Destino</label>
+        <input type="text" name="destino" required placeholder="España" list="lista-destinos" autocomplete="off" value="{{ venta.destino if venta else '' }}">
+      </div>
+      <div>
+        <label>Ciudad del cliente</label>
+        <input type="text" name="ciudad_cliente" value="{{ venta.ciudad_cliente if venta else '' }}">
+      </div>
+      <div style="grid-column:1 / span 2;">
+        <label>Descripción del viaje</label>
+        <input type="text" name="descripcion_viaje" placeholder="Paquete todo incluido, migratorio, luna de miel..." value="{{ venta.descripcion_viaje if venta else '' }}">
+      </div>
+      <div>
+        <label>Fecha del viaje</label>
+        <input type="date" name="fecha_viaje" value="{{ venta.fecha_viaje.isoformat() if venta and venta.fecha_viaje else '' }}">
+      </div>
+      <div>
+        <label>Contacto de emergencia</label>
+        <input type="text" name="contacto_emergencia" placeholder="No es un pasajero: nombre y teléfono de alguien a quien llamar" value="{{ venta.contacto_emergencia if venta else '' }}">
+      </div>
+      <div>
+        <label><input type="checkbox" name="tiene_contrato" style="width:auto; display:inline; vertical-align:middle;" {% if venta and venta.tiene_contrato %}checked{% endif %}> Tiene contrato</label>
+      </div>
+    </div>
+    <p class="muted">El comprador/titular NO se escribe aquí — es el "Pasajero 1" más abajo, para no digitarlo dos veces.</p>
+  </div>
+
+  <div class="card">
+    <h2>Valor y forma de venta</h2>
+    <div class="grid2">
+      <div>
+        <label>Valor venta real</label>
+        <input type="text" name="valor_venta_real" required placeholder="4500000" value="{{ venta.valor_venta_real|int if venta and venta.valor_venta_real else '' }}">
+      </div>
+      <div>
+        <label>Cuenta</label>
+        <input type="text" name="cuenta" placeholder="Cuenta a la que ingresa el pago" value="{{ venta.cuenta if venta else '' }}">
+      </div>
+      <div>
+        <label>Fecha máxima de pago total (si es cartera)</label>
+        <input type="date" name="fecha_maxima_pago" value="{{ venta.fecha_maxima_pago.isoformat() if venta and venta.fecha_maxima_pago else '' }}">
+      </div>
+      <div>
+        <label>Fecha de venta inicial (solo cartera)</label>
+        <input type="date" name="fecha_venta_inicial_cartera" value="{{ venta.fecha_venta_inicial_cartera.isoformat() if venta and venta.fecha_venta_inicial_cartera else '' }}">
+      </div>
+    </div>
+    <p class="muted">Caja registrará después cuánto se recibió por datafono, banco y efectivo; el saldo pendiente se calcula solo.</p>
+  </div>
+
+  <div class="card">
+    <h2>Proveedores y costos</h2>
+    <div class="grid2">
+      <div>
+        <label>Proveedor tiquete</label>
+        <input type="text" name="proveedor_tiquete" list="lista-aerolineas" autocomplete="off" value="{{ venta.proveedor_tiquete if venta else '' }}">
+      </div>
+      <div>
+        <label>Costo tiquetes</label>
+        <input type="text" name="costo_tiquetes" placeholder="0" value="{{ venta.costo_tiquetes|int if venta and venta.costo_tiquetes else '' }}">
+      </div>
+      <div>
+        <label>Proveedor conexión</label>
+        <input type="text" name="proveedor_conexion" list="lista-aerolineas" autocomplete="off" value="{{ venta.proveedor_conexion if venta else '' }}">
+      </div>
+      <div>
+        <label>Costo vuelo conexión</label>
+        <input type="text" name="costo_conexion" placeholder="0" value="{{ venta.costo_conexion|int if venta and venta.costo_conexion else '' }}">
+      </div>
+      <div>
+        <label>Proveedor asistencia médica</label>
+        <input type="text" name="proveedor_asistencia" list="lista-seguros" autocomplete="off" value="{{ venta.proveedor_asistencia if venta else '' }}">
+      </div>
+      <div>
+        <label>Costo asistencia médica</label>
+        <input type="text" name="costo_asistencia" placeholder="0" value="{{ venta.costo_asistencia|int if venta and venta.costo_asistencia else '' }}">
+      </div>
+      <div>
+        <label>Proveedor hotel</label>
+        <input type="text" name="proveedor_hotel" list="lista-hoteles" autocomplete="off" value="{{ venta.proveedor_hotel if venta else '' }}">
+      </div>
+      <div>
+        <label>Costo hotel</label>
+        <input type="text" name="costo_hotel" placeholder="0" value="{{ venta.costo_hotel|int if venta and venta.costo_hotel else '' }}">
+      </div>
+      <div>
+        <label>Amadeus</label>
+        <input type="text" name="amadeus" placeholder="0" value="{{ venta.amadeus|int if venta and venta.amadeus else '' }}">
+      </div>
+      <div>
+        <label>FI bancario</label>
+        <input type="text" name="fi_bancario" placeholder="0" value="{{ venta.fi_bancario|int if venta and venta.fi_bancario else '' }}">
+      </div>
+      <div>
+        <label>Descripción obsequio</label>
+        <input type="text" name="descripcion_obsequio" value="{{ venta.descripcion_obsequio if venta else '' }}">
+      </div>
+      <div>
+        <label>Costo obsequio</label>
+        <input type="text" name="costo_obsequio" placeholder="0" value="{{ venta.costo_obsequio|int if venta and venta.costo_obsequio else '' }}">
+      </div>
+      <div>
+        <label>Descripción receptivos</label>
+        <input type="text" name="descripcion_receptivos" value="{{ venta.descripcion_receptivos if venta else '' }}">
+      </div>
+      <div>
+        <label>Costo receptivos</label>
+        <input type="text" name="costo_receptivos" placeholder="0" value="{{ venta.costo_receptivos|int if venta and venta.costo_receptivos else '' }}">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Observaciones</h2>
+    <input type="text" name="observaciones" placeholder="Notas para caja o facturación" value="{{ venta.observaciones if venta else '' }}">
+  </div>
+
+  <div class="card">
+    <h2>Pasajeros</h2>
+    <p class="muted">El Pasajero 1 es el titular/comprador de la venta — sus datos son los únicos que identifican al cliente, no hay un formulario aparte.</p>
+    <div id="pasajeros"></div>
+    <button type="button" onclick="agregarPasajero()" class="btn-secundario" style="margin-top:12px;">+ Agregar pasajero</button>
+  </div>
+
+  <div style="display:flex; gap:10px;">
+    <button type="submit" name="accion" value="borrador" class="btn-secundario">Guardar borrador</button>
+    <button type="submit" name="accion" value="enviar">Enviar a caja</button>
+  </div>
+</form>
+
+<datalist id="lista-destinos">
+  {% for d in destinos %}<option value="{{ d }}">{% endfor %}
+</datalist>
+<datalist id="lista-aerolineas">
+  {% for a in aerolineas %}<option value="{{ a }}">{% endfor %}
+</datalist>
+<datalist id="lista-hoteles">
+  {% for h in hoteles %}<option value="{{ h }}">{% endfor %}
+</datalist>
+<datalist id="lista-seguros">
+  {% for s in seguros %}<option value="{{ s }}">{% endfor %}
+</datalist>
+<datalist id="lista-sedes">
+  {% for s in sedes %}<option value="{{ s }}">{% endfor %}
+</datalist>
+<datalist id="lista-origenes">
+  {% for o in origenes %}<option value="{{ o }}">{% endfor %}
+</datalist>
+
+<template id="plantilla-pasajero">
+  <div class="pasajero-row">
+    <strong class="titulo-pasajero"></strong>
+    <div class="grid2">
+      <div>
+        <label>Nombres</label>
+        <input type="text" name="pasajero_nombres" required>
+      </div>
+      <div>
+        <label>Apellidos</label>
+        <input type="text" name="pasajero_apellidos">
+      </div>
+      <div>
+        <label>Tipo de documento</label>
+        <select name="pasajero_tipo_documento">
+          <option value="CC">Cédula de ciudadanía</option>
+          <option value="TI">Tarjeta de identidad</option>
+          <option value="CE">Cédula de extranjería</option>
+          <option value="PA">Pasaporte</option>
+        </select>
+      </div>
+      <div>
+        <label>Número de documento</label>
+        <input type="text" name="pasajero_numero_documento" required>
+      </div>
+      <div>
+        <label>Fecha de nacimiento</label>
+        <input type="date" name="pasajero_fecha_nacimiento">
+      </div>
+      <div>
+        <label>Teléfono</label>
+        <input type="text" name="pasajero_telefono">
+      </div>
+      <div style="grid-column:1 / span 2;">
+        <label>Email</label>
+        <input type="email" name="pasajero_email">
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+let contador = 0;
+function agregarPasajero(datos) {
+  const plantilla = document.getElementById('plantilla-pasajero').content.cloneNode(true);
+  contador++;
+  plantilla.querySelector('.titulo-pasajero').textContent =
+    contador === 1 ? 'Pasajero 1 (titular / comprador)' : 'Pasajero ' + contador;
+  if (datos) {
+    plantilla.querySelector('[name=pasajero_nombres]').value = datos.nombres || '';
+    plantilla.querySelector('[name=pasajero_apellidos]').value = datos.apellidos || '';
+    plantilla.querySelector('[name=pasajero_tipo_documento]').value = datos.tipo_documento || 'CC';
+    plantilla.querySelector('[name=pasajero_numero_documento]').value = datos.numero_documento || '';
+    plantilla.querySelector('[name=pasajero_fecha_nacimiento]').value = datos.fecha_nacimiento || '';
+    plantilla.querySelector('[name=pasajero_telefono]').value = datos.telefono || '';
+    plantilla.querySelector('[name=pasajero_email]').value = datos.email || '';
+  }
+  document.getElementById('pasajeros').appendChild(plantilla);
+}
+
+const pasajerosExistentes = {{ pasajeros_json | tojson }};
+if (pasajerosExistentes.length > 0) {
+  pasajerosExistentes.forEach(function (p) { agregarPasajero(p); });
+} else {
+  agregarPasajero();
+}
+</script>
+{% endblock %}

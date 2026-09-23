@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Venta #{{ venta.id }}{% endblock %}
+{% block refresh %}{% if venta.estado != 'facturado' %}<meta http-equiv="refresh" content="5">{% endif %}{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h2>Venta #{{ venta.id }} — {{ venta.titular_nombre }} · {{ venta.destino }}
+    <span class="badge badge-{{ venta.estado }}">{{ venta.estado_label }}</span>
+  </h2>
+  <p class="muted">Diligenciado por {{ venta.asesor.nombre if venta.asesor else '—' }} el {{ venta.fecha_creacion.strftime('%d/%m/%Y %H:%M') if venta.fecha_creacion else '' }}.
+  Última actualización: {{ venta.ultima_actualizacion.strftime('%H:%M:%S') if venta.ultima_actualizacion else '' }}</p>
+
+  <div class="progreso">
+    {% for etiqueta, simbolo in venta.pasos_progreso %}
+      <span class="paso paso-{{ simbolo }}">
+        {% if simbolo == 'check' %}✓{% elif simbolo == 'activo' %}●{% else %}○{% endif %}
+        {{ etiqueta }}
+      </span>
+      {% if not loop.last %}<span class="flecha">→</span>{% endif %}
+    {% endfor %}
+  </div>
+
+  {% if venta.estado == 'borrador' and (current_user.rol == 'admin' or current_user.id == venta.asesor_id) %}
+  <a class="btn" href="{{ url_for('venta_editar', venta_id=venta.id) }}">Editar / enviar a caja</a>
+  {% endif %}
+
+  <table>
+    <tr><th>Fecha de venta</th><td>{{ venta.fecha_venta.strftime('%d/%m/%Y') if venta.fecha_venta else '—' }}</td></tr>
+    <tr><th>Sede</th><td>{{ venta.sede or '—' }}</td></tr>
+    <tr><th>Origen venta</th><td>{{ venta.origen_venta or '—' }}</td></tr>
+    <tr><th>Concepto</th><td>{{ venta.concepto }}</td></tr>
+    <tr><th>Descripción viaje</th><td>{{ venta.descripcion_viaje or '—' }}</td></tr>
+    <tr><th># PAX</th><td>{{ venta.pax }}</td></tr>
+    <tr><th>Fecha de viaje</th><td>{{ venta.fecha_viaje.strftime('%d/%m/%Y') if venta.fecha_viaje else '—' }}</td></tr>
+    <tr><th>Tiene contrato</th><td>{{ 'Sí' if venta.tiene_contrato else 'No' }}</td></tr>
+    {% if venta.observaciones %}<tr><th>Observaciones</th><td>{{ venta.observaciones }}</td></tr>{% endif %}
+  </table>
+</div>
+
+<div class="card">
+  <h3>Titular / comprador <span class="muted" style="font-weight:normal;">(= pasajero principal, no hay un formulario de cliente aparte)</span></h3>
+  <table>
+    <tr><th>Nombre</th><td>{{ venta.titular_nombre or '—' }}</td></tr>
+    <tr><th>Documento</th><td>{{ venta.titular_documento or '—' }}</td></tr>
+    <tr><th>Teléfono</th><td>{{ venta.titular_telefono or '—' }}</td></tr>
+    <tr><th>Contacto de emergencia</th><td>{{ venta.contacto_emergencia or '—' }}</td></tr>
+    <tr><th>Ciudad del cliente</th><td>{{ venta.ciudad_cliente or '—' }}</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h3>Pasajeros ({{ venta.pax }})</h3>
+  <table>
+    <tr><th>Nombre</th><th>Documento</th><th>Nacimiento</th><th>Teléfono</th><th>Email</th></tr>
+    {% for p in venta.pasajeros %}
+    <tr>
+      <td>{{ p.nombres }} {{ p.apellidos }} {% if p.es_principal %}<span class="badge">principal</span>{% endif %}</td>
+      <td>{{ p.tipo_documento }} {{ p.numero_documento }}</td>
+      <td>{{ p.fecha_nacimiento }}</td>
+      <td>{{ p.telefono }}</td>
+      <td>{{ p.email }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+  <h3>Proveedores y costos</h3>
+  <table>
+    <tr><th>Tiquete</th><td>{{ venta.proveedor_tiquete or '—' }}</td><td>${{ '{:,.0f}'.format(venta.costo_tiquetes or 0) }}</td></tr>
+    <tr><th>Conexión</th><td>{{ venta.proveedor_conexion or '—' }}</td><td>${{ '{:,.0f}'.format(venta.costo_conexion or 0) }}</td></tr>
+    <tr><th>Asistencia médica</th><td>{{ venta.proveedor_asistencia or '—' }}</td><td>${{ '{:,.0f}'.format(venta.costo_asistencia or 0) }}</td></tr>
+    <tr><th>Hotel</th><td>{{ venta.proveedor_hotel or '—' }}</td><td>${{ '{:,.0f}'.format(venta.costo_hotel or 0) }}</td></tr>
+    <tr><th>Amadeus</th><td></td><td>${{ '{:,.0f}'.format(venta.amadeus or 0) }}</td></tr>
+    <tr><th>FI bancario</th><td></td><td>${{ '{:,.0f}'.format(venta.fi_bancario or 0) }}</td></tr>
+    <tr><th>Obsequio</th><td>{{ venta.descripcion_obsequio or '—' }}</td><td>${{ '{:,.0f}'.format(venta.costo_obsequio or 0) }}</td></tr>
+    <tr><th>Receptivos</th><td>{{ venta.descripcion_receptivos or '—' }}</td><td>${{ '{:,.0f}'.format(venta.costo_receptivos or 0) }}</td></tr>
+    <tr><th>Total costos</th><td></td><th>${{ '{:,.0f}'.format(venta.total_costos) }}</th></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h3>Valor y pagos</h3>
+  <table>
+    <tr><th>Valor venta real</th><td>${{ '{:,.0f}'.format(venta.valor_venta_real or 0) }}</td></tr>
+    <tr><th>Cuenta</th><td>{{ venta.cuenta or '—' }}</td></tr>
+    <tr><th>Datafono</th><td>${{ '{:,.0f}'.format(venta.valor_datafono or 0) }}</td></tr>
+    <tr><th>Banco</th><td>${{ '{:,.0f}'.format(venta.valor_banco or 0) }} {% if venta.ultimos4_cuenta %}(cta. ...{{ venta.ultimos4_cuenta }}){% endif %}</td></tr>
+    <tr><th>Efectivo</th><td>${{ '{:,.0f}'.format(venta.valor_efectivo or 0) }}</td></tr>
+    <tr><th>Saldo pendiente</th><th>${{ '{:,.0f}'.format(venta.saldo_pendiente) }}</th></tr>
+    {% if venta.fecha_maxima_pago %}<tr><th>Fecha máxima de pago</th><td>{{ venta.fecha_maxima_pago.strftime('%d/%m/%Y') }}</td></tr>{% endif %}
+  </table>
+
+  {% if current_user.rol in ['caja','admin'] and venta.estado in ['pendiente_caja','pendiente_facturacion'] %}
+  <h4 style="margin-top:18px;">Registrar / corregir pago</h4>
+  <form method="post" action="{{ url_for('venta_caja', venta_id=venta.id) }}">
+    <div class="grid2">
+      <div><label>Valor recibido datafono</label><input type="text" name="valor_datafono" value="{{ venta.valor_datafono or '' }}" placeholder="0"></div>
+      <div><label>Valor recibido banco</label><input type="text" name="valor_banco" value="{{ venta.valor_banco or '' }}" placeholder="0"></div>
+      <div><label>Últimos 4 dígitos cuenta</label><input type="text" name="ultimos4_cuenta" value="{{ venta.ultimos4_cuenta or '' }}" maxlength="4"></div>
+      <div><label>Valor recibido efectivo</label><input type="text" name="valor_efectivo" value="{{ venta.valor_efectivo or '' }}" placeholder="0"></div>
+      <div style="grid-column:1 / span 2;"><label>Cuenta</label><input type="text" name="cuenta" value="{{ venta.cuenta or '' }}"></div>
+    </div>
+    <button type="submit" style="margin-top:12px;">Confirmar pago y pasar a facturación</button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3>Tarifa de agencia (T.A.) e IVA</h3>
+  <table>
+    {% if venta.concepto == 'CARTERA' %}
+    <tr><th>Cartera recaudada antes de IVA</th><td>${{ '{:,.0f}'.format(venta.cartera_antes_iva) }}</td></tr>
+    <tr><th>IVA 19%</th><td>${{ '{:,.0f}'.format(venta.iva_cartera) }}</td></tr>
+    <tr><th>Cartera recaudada después de IVA</th><td>${{ '{:,.0f}'.format(venta.cartera_despues_iva) }}</td></tr>
+    <tr><th>Cartera por cobrar</th><td>${{ '{:,.0f}'.format(venta.cartera_por_cobrar) }}</td></tr>
+    {% else %}
+    <tr><th>T.A. antes de IVA</th><td>${{ '{:,.0f}'.format(venta.ta_antes_iva) }}</td></tr>
+    <tr><th>IVA 19%</th><td>${{ '{:,.0f}'.format(venta.iva_ta) }}</td></tr>
+    <tr><th>T.A. después de IVA</th><td>${{ '{:,.0f}'.format(venta.ta_despues_iva) }}</td></tr>
+    {% endif %}
+  </table>
+  <p class="muted">Mismo cálculo que ya usan en el archivo de control: T.A. = (banco + efectivo) − total costos, y el IVA se extrae de ese valor (÷1.19 × 19%).</p>
+</div>
+
+{% if current_user.rol in ['facturacion','admin'] %}
+<div class="card">
+  <h3>Facturación electrónica</h3>
+  {% if venta.numero_factura %}
+    <p>Factura <strong>{{ venta.numero_factura }}</strong> generada el {{ venta.fecha_facturacion.strftime('%d/%m/%Y %H:%M') if venta.fecha_facturacion else '' }} por {{ venta.facturador.nombre if venta.facturador else '' }}.</p>
+  {% elif venta.estado == 'pendiente_facturacion' %}
+    <form method="post" action="{{ url_for('venta_facturar', venta_id=venta.id) }}">
+      <label>Número de factura electrónica</label>
+      <input type="text" name="numero_factura" required>
+      <button type="submit" style="margin-top:12px;">Marcar como facturada</button>
+    </form>
+  {% else %}
+    <p class="muted">Todavía no está lista para facturar (falta caja).</p>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}
