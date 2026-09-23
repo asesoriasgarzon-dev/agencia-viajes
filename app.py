@@ -53,15 +53,22 @@ SEMILLA_ORIGENES = [
     "valla publicitaria", "feria",
 ]
 
+# DATA_DIR apunta al volumen persistente en Railway (montado en /data) para
+# que la base y la clave de sesión sobrevivan a los redeploys. En local, sin
+# esa variable, cae en la misma carpeta del proyecto de siempre.
+DATA_DIR = os.environ.get("DATA_DIR", BASE_DIR)
+os.makedirs(DATA_DIR, exist_ok=True)
+
+
 def _clave_secreta():
     clave = os.environ.get("SECRET_KEY")
     if clave:
         return clave
 
-    # Desarrollo local únicamente: no hay SECRET_KEY en el entorno, así que
-    # generamos una una sola vez y la guardamos fuera de git (ver
-    # .gitignore). Nunca es un valor conocido/hardcodeado en el código.
-    ruta_dev = os.path.join(BASE_DIR, ".secret_key.dev")
+    # Sin SECRET_KEY en el entorno: generamos una una sola vez y la guardamos
+    # en DATA_DIR (fuera de git, ver .gitignore). Nunca es un valor conocido/
+    # hardcodeado en el código.
+    ruta_dev = os.path.join(DATA_DIR, ".secret_key.dev")
     if os.path.exists(ruta_dev):
         with open(ruta_dev, "r") as f:
             return f.read().strip()
@@ -74,7 +81,7 @@ def _clave_secreta():
 app = Flask(__name__)
 app.config["SECRET_KEY"] = _clave_secreta()
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(
-    BASE_DIR, "agencia.db"
+    DATA_DIR, "agencia.db"
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
