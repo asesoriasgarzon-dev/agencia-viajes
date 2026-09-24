@@ -7,26 +7,35 @@
   <p class="muted">{{ clientes|length }} personas distintas identificadas por número de documento, a través de todas las ventas.</p>
 </div>
 
-<div class="card">
+<div class="card" style="overflow-x:auto;">
   <table>
     <tr>
-      <th>Nombre</th><th>Documento</th><th>Teléfono</th><th># Viajes</th>
-      <th>Veces titular</th><th>Gastado como titular</th><th>Destinos</th><th>Viaja con</th><th></th>
+      <th>Nombre</th><th>Documento</th><th>Vence</th><th>Teléfono</th><th>Email</th><th># Viajes</th>
+      <th>Veces titular</th><th>Gastado como titular</th><th>Destinos</th><th>Preferencias</th><th>Viaja con</th><th></th>
     </tr>
     {% for c in clientes %}
     <tr>
       <td>{{ c.nombre }}</td>
       <td>{{ c.documento }}</td>
+      <td>{{ c.fecha_vencimiento_documento or '—' }}</td>
       <td>{{ c.telefono or '—' }}</td>
+      <td>{{ c.email or '—' }}</td>
       <td>{{ c.num_viajes }}</td>
       <td>{{ c.veces_titular }}</td>
       <td>${{ '{:,.0f}'.format(c.monto_como_titular) }}</td>
       <td>{{ c.destinos | join(', ') }}</td>
+      <td class="muted">
+        {%- set prefs = [] -%}
+        {%- if c.preferencia_asiento %}{{ prefs.append(c.preferencia_asiento) or '' }}{% endif -%}
+        {%- if c.hotel_preferido %}{{ prefs.append('hotel: ' + c.hotel_preferido) or '' }}{% endif -%}
+        {%- if c.restricciones_alimentarias %}{{ prefs.append(c.restricciones_alimentarias) or '' }}{% endif -%}
+        {{ prefs | join(' · ') or '—' }}
+      </td>
       <td>{{ c.acompanantes | join(', ') or '—' }}</td>
       <td>{% if c.ultima_venta_id %}<a class="btn" href="{{ url_for('venta_detalle', venta_id=c.ultima_venta_id) }}">Ver</a>{% endif %}</td>
     </tr>
     {% else %}
-    <tr><td colspan="9" class="muted">Todavía no hay pasajeros registrados.</td></tr>
+    <tr><td colspan="12" class="muted">Todavía no hay pasajeros registrados.</td></tr>
     {% endfor %}
   </table>
 </div>

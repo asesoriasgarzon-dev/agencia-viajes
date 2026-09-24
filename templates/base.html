@@ -32,7 +32,7 @@
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0 16px; }
   .pasajero-row { border:1px dashed var(--borde); padding:12px; border-radius:6px; margin-top:10px; }
   .muted { color:#5a6b7a; font-size:13px; }
-  .stats { display:grid; grid-template-columns:repeat(5, 1fr); gap:12px; margin-bottom:16px; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:12px; margin-bottom:16px; }
   .stat { background:#fff; border:1px solid var(--borde); border-radius:8px; padding:14px; text-align:center; }
   .stat .valor { font-size:22px; font-weight:bold; color:var(--azul); }
   .stat .etiqueta { font-size:12px; color:#5a6b7a; margin-top:4px; }
@@ -53,6 +53,7 @@
     <a href="{{ url_for('ventas') }}"><strong>Agencia de Viajes</strong></a>
     {% if current_user.is_authenticated %}
       {% if current_user.rol in ['asesor','admin'] %}<a href="{{ url_for('venta_nueva') }}">Nuevo viaje</a>{% endif %}
+      <a href="{{ url_for('recordatorios') }}">Recordatorios</a>
       {% if current_user.rol == 'admin' %}<a href="{{ url_for('reportes') }}">Reportes</a>{% endif %}
       {% if current_user.rol == 'admin' %}<a href="{{ url_for('crm') }}">CRM</a>{% endif %}
       {% if current_user.rol == 'admin' %}<a href="{{ url_for('admin_usuarios') }}">Usuarios</a>{% endif %}

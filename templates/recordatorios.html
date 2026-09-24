@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Recordatorios{% endblock %}
+{% block content %}
+<a class="volver" href="{{ url_for('ventas') }}">← Volver</a>
+
+<div class="card">
+  <h2>Recordatorios</h2>
+  <p class="muted">Seguimiento visible aquí en la app — no son correos automáticos enviados solos (eso requiere conectar un servicio de correo con credenciales propias de la agencia).</p>
+</div>
+
+<div class="card">
+  <h3>Pagos por vencer (cartera)</h3>
+  {% if pagos_por_vencer %}
+  <table>
+    <tr><th>Venta</th><th>Cliente</th><th>Vence</th><th></th></tr>
+    {% for r in pagos_por_vencer %}
+    <tr>
+      <td>#{{ r.venta.id }}</td>
+      <td>{{ r.venta.titular_nombre }}</td>
+      <td>{% if r.dias < 0 %}<span style="color:var(--rojo); font-weight:bold;">Vencido hace {{ -r.dias }} día(s)</span>{% elif r.dias == 0 %}<span style="color:var(--rojo);">Vence hoy</span>{% else %}En {{ r.dias }} día(s){% endif %}</td>
+      <td><a class="btn" href="{{ url_for('venta_detalle', venta_id=r.venta.id) }}">Ver</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">Nada por vencer en los próximos 7 días.</p>
+  {% endif %}
+</div>
+
+{% if current_user.rol in ['admin','asesor'] %}
+<div class="card">
+  <h3>Prospectos sin avanzar (5+ días)</h3>
+  {% if prospectos_estancados %}
+  <table>
+    <tr><th>Venta</th><th>Cliente</th><th>Etapa</th><th>Días quieto</th><th></th></tr>
+    {% for r in prospectos_estancados %}
+    <tr>
+      <td>#{{ r.venta.id }}</td>
+      <td>{{ r.venta.titular_nombre or '—' }}</td>
+      <td>{{ r.venta.etapa_embudo_label }}</td>
+      <td>{{ r.dias }}</td>
+      <td><a class="btn" href="{{ url_for('venta_detalle', venta_id=r.venta.id) }}">Ver</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">Ningún prospecto quieto por más de 5 días.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3>Cumpleaños esta semana</h3>
+  {% if cumpleanos_semana %}
+  <table>
+    <tr><th>Pasajero</th><th>Teléfono</th><th></th></tr>
+    {% for r in cumpleanos_semana %}
+    <tr>
+      <td>{{ r.pasajero.nombres }} {{ r.pasajero.apellidos }}</td>
+      <td>{{ r.pasajero.telefono or '—' }}</td>
+      <td>{% if r.dias == 0 %}<span style="color:var(--verde); font-weight:bold;">Hoy</span>{% else %}En {{ r.dias }} día(s){% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">Sin cumpleaños esta semana.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

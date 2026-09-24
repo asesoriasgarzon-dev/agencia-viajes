@@ -17,6 +17,19 @@ ESTADOS = [
 
 CONCEPTOS = ["VENTA", "CARTERA", "RC"]
 
+# Embudo de ventas (CRM): informativo, no reemplaza el estado operativo de la
+# venta (borrador/pendiente_caja/pendiente_facturacion/facturado). Las dos
+# primeras etapas son manuales (el asesor las mueve mientras aún cotiza);
+# "reserva_confirmada" se pone sola al enviar a caja; "viaje_realizado" no se
+# guarda — se calcula (facturado + fecha de viaje ya pasada).
+ETAPAS_EMBUDO = [
+    ("prospecto", "Prospecto"),
+    ("cotizacion_enviada", "Cotización enviada"),
+    ("negociacion", "Negociación"),
+    ("reserva_confirmada", "Reserva confirmada"),
+    ("viaje_realizado", "Viaje realizado"),
+]
+
 
 def _num(valor):
     return float(valor) if valor else 0.0
@@ -103,6 +116,8 @@ class Venta(db.Model):
 
     tiene_contrato = db.Column(db.Boolean, default=False)
     observaciones = db.Column(db.Text)
+
+    etapa_embudo = db.Column(db.String(30), default="prospecto")
 
     estado = db.Column(db.String(30), default="borrador")
     numero_factura = db.Column(db.String(50))
@@ -215,6 +230,18 @@ class Venta(db.Model):
         return dict(ESTADOS).get(self.estado, self.estado)
 
     @property
+    def etapa_embudo_efectiva(self):
+        """'viaje_realizado' no se guarda — se calcula: ya facturada y la
+        fecha de viaje ya pasó. El resto viene tal cual de la columna."""
+        if self.estado == "facturado" and self.fecha_viaje and self.fecha_viaje < datetime.utcnow().date():
+            return "viaje_realizado"
+        return self.etapa_embudo or "prospecto"
+
+    @property
+    def etapa_embudo_label(self):
+        return dict(ETAPAS_EMBUDO).get(self.etapa_embudo_efectiva, self.etapa_embudo_efectiva)
+
+    @property
     def pasos_progreso(self):
         """Para el indicador visual Asesor → Caja → Facturación → Exportables."""
         orden = {"borrador": 0, "pendiente_caja": 1, "pendiente_facturacion": 2, "facturado": 3}
@@ -250,6 +277,11 @@ class Pasajero(db.Model):
     fecha_nacimiento = db.Column(db.String(20))
     telefono = db.Column(db.String(30))
     email = db.Column(db.String(120))
+
+    fecha_vencimiento_documento = db.Column(db.String(20))
+    preferencia_asiento = db.Column(db.String(20))
+    hotel_preferido = db.Column(db.String(120))
+    restricciones_alimentarias = db.Column(db.String(200))
 
 
 # Catálogo único de campos exportables. Ambos exportadores (contador y
@@ -328,6 +360,7 @@ def seed_demo_ventas():
         return
 
     from datetime import date as _date
+    from datetime import timedelta
 
     asesor = Usuario.query.filter_by(username="asesor1").first()
     caja = Usuario.query.filter_by(username="caja1").first()
@@ -337,25 +370,39 @@ def seed_demo_ventas():
 
     hoy = _date.today()
 
-    def _pasajero(nombres, apellidos, doc, tipo="CC", telefono=None, principal=False):
+    def _pasajero(
+        nombres, apellidos, doc, tipo="CC", telefono=None, principal=False,
+        fecha_nacimiento=None, fecha_vencimiento_documento=None,
+        preferencia_asiento=None, hotel_preferido=None, restricciones_alimentarias=None,
+    ):
         return Pasajero(
             nombres=nombres, apellidos=apellidos, tipo_documento=tipo,
             numero_documento=doc, telefono=telefono, es_principal=principal,
+            fecha_nacimiento=fecha_nacimiento,
+            fecha_vencimiento_documento=fecha_vencimiento_documento,
+            preferencia_asiento=preferencia_asiento,
+            hotel_preferido=hotel_preferido,
+            restricciones_alimentarias=restricciones_alimentarias,
         )
 
-    # 1) Borrador — el asesor todavía está diligenciando.
+    # 1) Borrador — el asesor todavía está diligenciando (en negociación).
     v1 = Venta(
         asesor_id=asesor.id, estado="borrador", fecha_venta=hoy,
         sede="B", origen_venta="redes sociales", concepto="VENTA",
+        etapa_embudo="negociacion",
         destino="Cancún, México",
         descripcion_viaje="Paquete todo incluido - en cotización",
         valor_venta_real=3000000,
     )
 
-    # 2) Pendiente caja — el asesor ya envió, caja aún no cobra.
+    # 2) Pendiente caja — venta a crédito (CARTERA), con fecha de pago
+    # próxima a vencer (para mostrar el panel de Recordatorios con datos).
     v2 = Venta(
         asesor_id=asesor.id, estado="pendiente_caja", fecha_venta=hoy,
-        sede="A", origen_venta="whatsapp", concepto="VENTA",
+        sede="A", origen_venta="whatsapp", concepto="CARTERA",
+        etapa_embudo="reserva_confirmada",
+        fecha_maxima_pago=hoy + timedelta(days=3),
+        fecha_venta_inicial_cartera=hoy,
         destino="Nueva York, Estados Unidos", descripcion_viaje="Viaje de compras",
         valor_venta_real=6500000, proveedor_tiquete="American Airlines",
         costo_tiquetes=4200000,
@@ -399,8 +446,17 @@ def seed_demo_ventas():
         valor_banco=8400000, valor_efectivo=4100000,
         numero_factura="FE-GARCIA-001", fecha_facturacion=datetime.utcnow(),
     )
-    v5.pasajeros.append(_pasajero("Pedro", "García", "79111222", telefono="3001112233", principal=True))
-    v5.pasajeros.append(_pasajero("Marcela", "García", "52111222"))
+    v5.pasajeros.append(_pasajero(
+        "Pedro", "García", "79111222", telefono="3001112233", principal=True,
+        fecha_nacimiento=hoy.replace(year=hoy.year - 45).isoformat(),
+        fecha_vencimiento_documento=(hoy + timedelta(days=200)).isoformat(),
+        preferencia_asiento="Ventana",
+    ))
+    v5.pasajeros.append(_pasajero(
+        "Marcela", "García", "52111222",
+        restricciones_alimentarias="Vegetariana",
+        hotel_preferido="Cerca a la playa",
+    ))
     v5.pasajeros.append(_pasajero("Juliana", "García", "1010555666", tipo="TI"))
     v5.pasajeros.append(_pasajero("Samuel", "García", "1010555667", tipo="TI"))
 

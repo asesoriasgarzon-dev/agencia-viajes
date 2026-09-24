@@ -7,6 +7,7 @@
 <div class="card">
   <h2>Venta #{{ venta.id }} — {{ venta.titular_nombre }} · {{ venta.destino }}
     <span class="badge badge-{{ venta.estado }}">{{ venta.estado_label }}</span>
+    <span class="badge">{{ venta.etapa_embudo_label }}</span>
   </h2>
   <p class="muted">Diligenciado por {{ venta.asesor.nombre if venta.asesor else '—' }} el {{ venta.fecha_creacion.strftime('%d/%m/%Y %H:%M') if venta.fecha_creacion else '' }}.
   Última actualización: {{ venta.ultima_actualizacion.strftime('%H:%M:%S') if venta.ultima_actualizacion else '' }}</p>
@@ -59,14 +60,22 @@
 <div class="card">
   <h3>Pasajeros ({{ venta.pax }})</h3>
   <table>
-    <tr><th>Nombre</th><th>Documento</th><th>Nacimiento</th><th>Teléfono</th><th>Email</th></tr>
+    <tr><th>Nombre</th><th>Documento</th><th>Vence</th><th>Nacimiento</th><th>Teléfono</th><th>Email</th><th>Preferencias</th></tr>
     {% for p in venta.pasajeros %}
     <tr>
       <td>{{ p.nombres }} {{ p.apellidos }} {% if p.es_principal %}<span class="badge">principal</span>{% endif %}</td>
       <td>{{ p.tipo_documento }} {{ p.numero_documento }}</td>
-      <td>{{ p.fecha_nacimiento }}</td>
-      <td>{{ p.telefono }}</td>
-      <td>{{ p.email }}</td>
+      <td>{{ p.fecha_vencimiento_documento or '—' }}</td>
+      <td>{{ p.fecha_nacimiento or '—' }}</td>
+      <td>{{ p.telefono or '—' }}</td>
+      <td>{{ p.email or '—' }}</td>
+      <td class="muted">
+        {%- set prefs = [] -%}
+        {%- if p.preferencia_asiento %}{{ prefs.append(p.preferencia_asiento) or '' }}{% endif -%}
+        {%- if p.hotel_preferido %}{{ prefs.append('hotel: ' + p.hotel_preferido) or '' }}{% endif -%}
+        {%- if p.restricciones_alimentarias %}{{ prefs.append(p.restricciones_alimentarias) or '' }}{% endif -%}
+        {{ prefs | join(' · ') or '—' }}
+      </td>
     </tr>
     {% endfor %}
   </table>

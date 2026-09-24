@@ -25,6 +25,7 @@ from destinos_data import DESTINOS_POPULARES
 from models import (
     CONCEPTOS,
     ESTADOS,
+    ETAPAS_EMBUDO,
     ExportConfig,
     Pasajero,
     ROLES,
@@ -213,6 +214,11 @@ def ventas():
         "valor_vendido": sum(
             float(v.valor_venta_real or 0) for v in todas if v.estado == "facturado"
         ),
+        "prospectos_activos": sum(
+            1 for v in todas
+            if v.estado == "borrador"
+            and v.etapa_embudo in ("prospecto", "cotizacion_enviada", "negociacion")
+        ),
     }
     return render_template(
         "ventas.html", ventas=todas, estados=dict(ESTADOS), stats=stats
@@ -252,6 +258,7 @@ def _sugerencias_contexto():
         sedes=_sugerencias(Venta.sede, SEMILLA_SEDES),
         origenes=_sugerencias(Venta.origen_venta, SEMILLA_ORIGENES),
         conceptos=CONCEPTOS,
+        etapas_embudo=ETAPAS_EMBUDO,
         hoy=date.today().isoformat(),
     )
 
@@ -309,6 +316,8 @@ def _aplicar_campos_venta(venta, f):
     venta.costo_receptivos = _a_decimal(f.get("costo_receptivos"))
     venta.tiene_contrato = bool(f.get("tiene_contrato"))
     venta.observaciones = f.get("observaciones", "").strip()
+    if f.get("etapa_embudo") in dict(ETAPAS_EMBUDO):
+        venta.etapa_embudo = f.get("etapa_embudo")
 
 
 def _procesar_pasajeros(f):
@@ -322,6 +331,10 @@ def _procesar_pasajeros(f):
     fechas_nac = f.getlist("pasajero_fecha_nacimiento")
     telefonos = f.getlist("pasajero_telefono")
     emails = f.getlist("pasajero_email")
+    vencimientos = f.getlist("pasajero_fecha_vencimiento_documento")
+    asientos = f.getlist("pasajero_preferencia_asiento")
+    hoteles_pref = f.getlist("pasajero_hotel_preferido")
+    restricciones = f.getlist("pasajero_restricciones_alimentarias")
 
     creados = []
     for i, nombre in enumerate(nombres):
@@ -336,6 +349,10 @@ def _procesar_pasajeros(f):
                 fecha_nacimiento=_en(fechas_nac, i),
                 telefono=_en(telefonos, i),
                 email=_en(emails, i),
+                fecha_vencimiento_documento=_en(vencimientos, i),
+                preferencia_asiento=_en(asientos, i),
+                hotel_preferido=_en(hoteles_pref, i),
+                restricciones_alimentarias=_en(restricciones, i),
             )
         )
     if creados:
@@ -352,6 +369,10 @@ def _pasajeros_a_json(lista_pasajeros):
             "numero_documento": p.numero_documento,
             "fecha_nacimiento": p.fecha_nacimiento,
             "telefono": p.telefono,
+            "fecha_vencimiento_documento": p.fecha_vencimiento_documento,
+            "preferencia_asiento": p.preferencia_asiento,
+            "hotel_preferido": p.hotel_preferido,
+            "restricciones_alimentarias": p.restricciones_alimentarias,
             "email": p.email,
         }
         for p in lista_pasajeros
@@ -391,6 +412,7 @@ def venta_nueva():
                     **_sugerencias_contexto()
                 )
             venta.estado = "pendiente_caja"
+            venta.etapa_embudo = "reserva_confirmada"
 
         venta.pasajeros.extend(pasajeros_creados)
         db.session.add(venta)
@@ -447,6 +469,7 @@ def venta_editar(venta_id):
 
         if accion == "enviar":
             venta.estado = "pendiente_caja"
+            venta.etapa_embudo = "reserva_confirmada"
 
         db.session.commit()
         flash(
@@ -836,12 +859,22 @@ def crm():
         doc = p.numero_documento.strip()
         if not doc:
             continue
-        perfil = perfiles.setdefault(doc, {"nombre": "", "telefono": None, "ventas": {}})
+        perfil = perfiles.setdefault(doc, {
+            "nombre": "", "telefono": None, "email": None,
+            "fecha_vencimiento_documento": None, "preferencia_asiento": None,
+            "hotel_preferido": None, "restricciones_alimentarias": None,
+            "ventas": {},
+        })
         nombre = f"{p.nombres or ''} {p.apellidos or ''}".strip()
         if nombre:
             perfil["nombre"] = nombre
-        if p.telefono:
-            perfil["telefono"] = p.telefono
+        for campo in (
+            "telefono", "email", "fecha_vencimiento_documento",
+            "preferencia_asiento", "hotel_preferido", "restricciones_alimentarias",
+        ):
+            valor = getattr(p, campo)
+            if valor:
+                perfil[campo] = valor
         if p.venta:
             perfil["ventas"][p.venta.id] = p.venta
 
@@ -867,6 +900,11 @@ def crm():
             "nombre": perfil["nombre"] or "—",
             "documento": doc,
             "telefono": perfil["telefono"],
+            "email": perfil["email"],
+            "fecha_vencimiento_documento": perfil["fecha_vencimiento_documento"],
+            "preferencia_asiento": perfil["preferencia_asiento"],
+            "hotel_preferido": perfil["hotel_preferido"],
+            "restricciones_alimentarias": perfil["restricciones_alimentarias"],
             "num_viajes": len(ventas_cliente),
             "veces_titular": veces_titular,
             "monto_como_titular": monto_como_titular,
@@ -877,6 +915,69 @@ def crm():
 
     clientes.sort(key=lambda c: c["num_viajes"], reverse=True)
     return render_template("crm.html", clientes=clientes)
+
+
+# --------------------------------------------------------------------------
+# Recordatorios — seguimiento visible en la app, NO envío automático de
+# correos (eso necesitaría conectar un servicio de correo con credenciales
+# reales, no incluido en este alcance). Cada asesor ve los suyos; admin ve
+# todos.
+# --------------------------------------------------------------------------
+
+
+@app.route("/recordatorios")
+@login_required
+def recordatorios():
+    hoy = date.today()
+    query = Venta.query.filter(Venta.estado != "facturado")
+    if current_user.rol == "asesor":
+        query = query.filter(Venta.asesor_id == current_user.id)
+    ventas_activas = query.all()
+
+    pagos_por_vencer = []
+    if current_user.rol in ("admin", "asesor", "caja"):
+        for v in ventas_activas:
+            if v.concepto == "CARTERA" and v.fecha_maxima_pago:
+                dias = (v.fecha_maxima_pago - hoy).days
+                if dias <= 7:
+                    pagos_por_vencer.append({"venta": v, "dias": dias})
+    pagos_por_vencer.sort(key=lambda x: x["dias"])
+
+    prospectos_estancados = []
+    if current_user.rol in ("admin", "asesor"):
+        for v in ventas_activas:
+            if v.estado == "borrador" and v.etapa_embudo in ("prospecto", "cotizacion_enviada", "negociacion"):
+                dias = (hoy - v.fecha_creacion.date()).days if v.fecha_creacion else 0
+                if dias >= 5:
+                    prospectos_estancados.append({"venta": v, "dias": dias})
+    prospectos_estancados.sort(key=lambda x: x["dias"], reverse=True)
+
+    cumpleanos_semana = []
+    if current_user.rol in ("admin", "asesor"):
+        cumple_query = Pasajero.query.filter(
+            Pasajero.fecha_nacimiento.isnot(None), Pasajero.fecha_nacimiento != ""
+        )
+        if current_user.rol == "asesor":
+            cumple_query = cumple_query.join(Venta).filter(Venta.asesor_id == current_user.id)
+        for p in cumple_query.all():
+            try:
+                nacimiento = datetime.strptime(p.fecha_nacimiento, "%Y-%m-%d").date()
+            except (ValueError, TypeError):
+                continue
+            proximo = nacimiento.replace(year=hoy.year)
+            if proximo < hoy:
+                proximo = proximo.replace(year=hoy.year + 1)
+            dias = (proximo - hoy).days
+            if dias <= 7:
+                cumpleanos_semana.append({"pasajero": p, "dias": dias})
+    cumpleanos_semana.sort(key=lambda x: x["dias"])
+
+    return render_template(
+        "recordatorios.html",
+        pagos_por_vencer=pagos_por_vencer,
+        prospectos_estancados=prospectos_estancados,
+        cumpleanos_semana=cumpleanos_semana,
+    )
 
 
 # --------------------------------------------------------------------------

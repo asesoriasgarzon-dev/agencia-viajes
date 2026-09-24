@@ -55,8 +55,18 @@
       <div>
         <label><input type="checkbox" name="tiene_contrato" style="width:auto; display:inline; vertical-align:middle;" {% if venta and venta.tiene_contrato %}checked{% endif %}> Tiene contrato</label>
       </div>
+      <div>
+        <label>Etapa del embudo</label>
+        <select name="etapa_embudo">
+          {% for valor, etiqueta in etapas_embudo %}
+          {% if valor in ('prospecto','cotizacion_enviada','negociacion') %}
+          <option value="{{ valor }}" {% if venta and venta.etapa_embudo == valor %}selected{% endif %}>{{ etiqueta }}</option>
+          {% endif %}
+          {% endfor %}
+        </select>
+      </div>
     </div>
-    <p class="muted">El comprador/titular NO se escribe aquí — es el "Pasajero 1" más abajo, para no digitarlo dos veces.</p>
+    <p class="muted">El comprador/titular NO se escribe aquí — es el "Pasajero 1" más abajo, para no digitarlo dos veces. Al enviar a caja, la etapa pasa sola a "Reserva confirmada".</p>
   </div>
 
   <div class="card">
@@ -214,9 +224,29 @@
         <label>Teléfono</label>
         <input type="text" name="pasajero_telefono">
       </div>
-      <div style="grid-column:1 / span 2;">
+      <div>
         <label>Email</label>
         <input type="email" name="pasajero_email">
+      </div>
+      <div>
+        <label>Vencimiento del documento</label>
+        <input type="date" name="pasajero_fecha_vencimiento_documento">
+      </div>
+      <div>
+        <label>Preferencia de asiento</label>
+        <select name="pasajero_preferencia_asiento">
+          <option value="">Sin preferencia</option>
+          <option value="Ventana">Ventana</option>
+          <option value="Pasillo">Pasillo</option>
+        </select>
+      </div>
+      <div>
+        <label>Hotel preferido</label>
+        <input type="text" name="pasajero_hotel_preferido">
+      </div>
+      <div style="grid-column:1 / span 2;">
+        <label>Restricciones alimentarias</label>
+        <input type="text" name="pasajero_restricciones_alimentarias" placeholder="Vegetariano, sin gluten, alergias...">
       </div>
     </div>
   </div>
@@ -237,6 +267,10 @@ function agregarPasajero(datos) {
     plantilla.querySelector('[name=pasajero_fecha_nacimiento]').value = datos.fecha_nacimiento || '';
     plantilla.querySelector('[name=pasajero_telefono]').value = datos.telefono || '';
     plantilla.querySelector('[name=pasajero_email]').value = datos.email || '';
+    plantilla.querySelector('[name=pasajero_fecha_vencimiento_documento]').value = datos.fecha_vencimiento_documento || '';
+    plantilla.querySelector('[name=pasajero_preferencia_asiento]').value = datos.preferencia_asiento || '';
+    plantilla.querySelector('[name=pasajero_hotel_preferido]').value = datos.hotel_preferido || '';
+    plantilla.querySelector('[name=pasajero_restricciones_alimentarias]').value = datos.restricciones_alimentarias || '';
   }
   document.getElementById('pasajeros').appendChild(plantilla);
 }
