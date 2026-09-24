@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}CRM{% endblock %}
 {% block content %}
+<a class="volver" href="{{ url_for('ventas') }}">← Volver</a>
 <div class="card">
   <h2>CRM <span class="muted" style="font-weight:normal;">(se arma solo a partir de los pasajeros de cada venta — no es captura aparte)</span></h2>
   <p class="muted">{{ clientes|length }} personas distintas identificadas por número de documento, a través de todas las ventas.</p>

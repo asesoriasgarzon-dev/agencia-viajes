@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ 'Editar viaje' if venta else 'Nuevo viaje' }}{% endblock %}
 {% block content %}
+<a class="volver" href="{{ url_for('venta_detalle', venta_id=venta.id) if venta else url_for('ventas') }}">← Volver</a>
 
 {% if venta %}
 <div class="card" style="background:#fff4e0;">

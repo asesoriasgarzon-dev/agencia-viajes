@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Config. exportables{% endblock %}
 {% block content %}
+<a class="volver" href="{{ url_for('ventas') }}">← Volver</a>
 <div class="card">
   <h2>¿Qué campos van en cada archivo?</h2>
   <p class="muted">Contador y tributario (DIAN) son dos configuraciones independientes, pero ambas leen exactamente la misma información de la venta y los pasajeros — marcar o desmarcar aquí NO crea ningún campo de captura nuevo, solo decide qué columnas salen en cada CSV.</p>

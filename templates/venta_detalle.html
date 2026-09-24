@@ -2,6 +2,7 @@
 {% block title %}Venta #{{ venta.id }}{% endblock %}
 {% block refresh %}{% if venta.estado != 'facturado' %}<meta http-equiv="refresh" content="5">{% endif %}{% endblock %}
 {% block content %}
+<a class="volver" href="{{ url_for('ventas') }}">← Volver</a>
 
 <div class="card">
   <h2>Venta #{{ venta.id }} — {{ venta.titular_nombre }} · {{ venta.destino }}
