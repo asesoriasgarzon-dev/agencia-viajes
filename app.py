@@ -981,8 +981,53 @@ def recordatorios():
 
 
 # --------------------------------------------------------------------------
+# Migración ligera: si la base ya existe de una versión anterior, le agrega
+# las columnas que falten en vez de romperse. db.create_all() no altera
+# tablas existentes, solo crea las que faltan por completo — esto cubre el
+# hueco para que un deploy nuevo nunca tumbe el arranque por un esquema viejo.
+# --------------------------------------------------------------------------
+
+
+def _migrar_columnas_faltantes():
+    """Compara cada tabla del modelo actual contra lo que ya existe en la
+    base y agrega (ALTER TABLE ADD COLUMN) lo que falte. Genérico: cubre
+    cualquier columna nueva de cualquier fase futura, no solo las de hoy."""
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+    tablas_existentes = set(inspector.get_table_names())
+
+    migraciones = []
+    for tabla in db.metadata.tables.values():
+        if tabla.name not in tablas_existentes:
+            continue  # tabla nueva por completo: db.create_all() la crea
+        columnas_existentes = {c["name"] for c in inspector.get_columns(tabla.name)}
+        for columna in tabla.columns:
+            if columna.name in columnas_existentes:
+                continue
+            tipo = columna.type.compile(dialect=db.engine.dialect)
+            default = ""
+            if columna.default is not None and columna.default.is_scalar:
+                valor = columna.default.arg
+                if isinstance(valor, bool):
+                    default = f" DEFAULT {1 if valor else 0}"
+                elif isinstance(valor, (int, float)):
+                    default = f" DEFAULT {valor}"
+                elif isinstance(valor, str):
+                    default = f" DEFAULT '{valor}'"
+            migraciones.append(
+                f"ALTER TABLE {tabla.name} ADD COLUMN {columna.name} {tipo}{default}"
+            )
+
+    if migraciones:
+        with db.engine.connect() as conn:
+            for sentencia in migraciones:
+                conn.execute(text(sentencia))
+            conn.commit()
+
 
 with app.app_context():
+    _migrar_columnas_faltantes()
     db.create_all()
     seed_defaults()
     if os.environ.get("SEED_DEMO", "1") == "1":
