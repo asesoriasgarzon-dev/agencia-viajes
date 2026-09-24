@@ -204,6 +204,10 @@ def ventas():
     todas = query.order_by(Venta.fecha_creacion.desc()).all()
 
     hoy = date.today()
+    es_prospecto = lambda v: (
+        v.estado == "borrador"
+        and v.etapa_embudo in ("prospecto", "cotizacion_enviada", "negociacion")
+    )
     stats = {
         "ventas_hoy": sum(1 for v in todas if v.fecha_venta == hoy),
         "pendientes_caja": sum(1 for v in todas if v.estado == "pendiente_caja"),
@@ -214,14 +218,25 @@ def ventas():
         "valor_vendido": sum(
             float(v.valor_venta_real or 0) for v in todas if v.estado == "facturado"
         ),
-        "prospectos_activos": sum(
-            1 for v in todas
-            if v.estado == "borrador"
-            and v.etapa_embudo in ("prospecto", "cotizacion_enviada", "negociacion")
-        ),
+        "prospectos_activos": sum(1 for v in todas if es_prospecto(v)),
     }
+
+    filtro = request.args.get("filtro", "")
+    filtros = {
+        "hoy": lambda v: v.fecha_venta == hoy,
+        "pendientes_caja": lambda v: v.estado == "pendiente_caja",
+        "pendientes_facturacion": lambda v: v.estado == "pendiente_facturacion",
+        "facturadas": lambda v: v.estado == "facturado",
+        "prospectos": es_prospecto,
+    }
+    mostradas = [v for v in todas if filtros[filtro](v)] if filtro in filtros else todas
+
     return render_template(
-        "ventas.html", ventas=todas, estados=dict(ESTADOS), stats=stats
+        "ventas.html",
+        ventas=mostradas,
+        estados=dict(ESTADOS),
+        stats=stats,
+        filtro=filtro,
     )
 
 

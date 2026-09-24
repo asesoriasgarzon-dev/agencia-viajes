@@ -4,16 +4,30 @@
 {% block content %}
 
 <div class="stats">
-  <div class="stat"><div class="valor">{{ stats.ventas_hoy }}</div><div class="etiqueta">Ventas de hoy</div></div>
-  <div class="stat"><div class="valor">{{ stats.pendientes_caja }}</div><div class="etiqueta">Pendientes de caja</div></div>
-  <div class="stat"><div class="valor">{{ stats.pendientes_facturacion }}</div><div class="etiqueta">Pendientes de facturación</div></div>
-  <div class="stat"><div class="valor">{{ stats.facturadas }}</div><div class="etiqueta">Facturadas</div></div>
-  <div class="stat"><div class="valor">${{ '{:,.0f}'.format(stats.valor_vendido) }}</div><div class="etiqueta">Valor vendido</div></div>
-  <div class="stat"><div class="valor">{{ stats.prospectos_activos }}</div><div class="etiqueta">Prospectos activos</div></div>
+  <a class="stat {{ 'stat-activo' if filtro == 'hoy' }}" href="{{ url_for('ventas', filtro='hoy') }}">
+    <div class="valor">{{ stats.ventas_hoy }}</div><div class="etiqueta">Ventas de hoy</div>
+  </a>
+  <a class="stat {{ 'stat-activo' if filtro == 'pendientes_caja' }}" href="{{ url_for('ventas', filtro='pendientes_caja') }}">
+    <div class="valor">{{ stats.pendientes_caja }}</div><div class="etiqueta">Pendientes de caja</div>
+  </a>
+  <a class="stat {{ 'stat-activo' if filtro == 'pendientes_facturacion' }}" href="{{ url_for('ventas', filtro='pendientes_facturacion') }}">
+    <div class="valor">{{ stats.pendientes_facturacion }}</div><div class="etiqueta">Pendientes de facturación</div>
+  </a>
+  <a class="stat {{ 'stat-activo' if filtro == 'facturadas' }}" href="{{ url_for('ventas', filtro='facturadas') }}">
+    <div class="valor">{{ stats.facturadas }}</div><div class="etiqueta">Facturadas</div>
+  </a>
+  <a class="stat {{ 'stat-activo' if filtro == 'facturadas' }}" href="{{ url_for('ventas', filtro='facturadas') }}">
+    <div class="valor">${{ '{:,.0f}'.format(stats.valor_vendido) }}</div><div class="etiqueta">Valor vendido</div>
+  </a>
+  <a class="stat {{ 'stat-activo' if filtro == 'prospectos' }}" href="{{ url_for('ventas', filtro='prospectos') }}">
+    <div class="valor">{{ stats.prospectos_activos }}</div><div class="etiqueta">Prospectos activos</div>
+  </a>
 </div>
 
 <div class="card">
-  <h2>Ventas <span class="muted" style="font-weight:normal;">(se actualiza sola cada 6s)</span></h2>
+  <h2>Ventas <span class="muted" style="font-weight:normal;">(se actualiza sola cada 6s)</span>
+    {% if filtro %}<a class="btn btn-secundario" style="font-size:12px; padding:4px 10px; margin-left:10px;" href="{{ url_for('ventas') }}">Quitar filtro ✕</a>{% endif %}
+  </h2>
   <table>
     <tr>
       <th>#</th><th>Fecha venta</th><th>Cliente / Titular</th><th>Pasajeros</th>
