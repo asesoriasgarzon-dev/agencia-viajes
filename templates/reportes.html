@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Reportes{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Reportería</h2>
+  <form method="get" style="display:flex; gap:12px; align-items:flex-end;">
+    <div style="flex:1;">
+      <label>Mes</label>
+      <select name="mes" onchange="this.form.submit()">
+        {% for m in meses_disponibles %}
+        <option value="{{ m }}" {% if m == mes %}selected{% endif %}>{{ m }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <a class="btn btn-secundario" href="{{ url_for('reportes_exportar', mes=mes) }}">Descargar CSV</a>
+  </form>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="valor">{{ total_ventas }}</div><div class="etiqueta">Ventas facturadas</div></div>
+  <div class="stat"><div class="valor">${{ '{:,.0f}'.format(total_facturado) }}</div><div class="etiqueta">Valor facturado</div></div>
+  <div class="stat"><div class="valor">{{ ranking_vendedores[0][0] if ranking_vendedores else '—' }}</div><div class="etiqueta">Vendedor del mes</div></div>
+</div>
+
+<div class="card">
+  <h3>Vendedores del mes</h3>
+  {% if ranking_vendedores %}
+  <div style="position:relative; height:{{ 60 + ranking_vendedores|length * 40 }}px;">
+    <canvas id="chartVendedores"></canvas>
+  </div>
+  <table style="margin-top:16px;">
+    <tr><th>Vendedor</th><th># Ventas</th><th>Valor facturado</th></tr>
+    {% for nombre, d in ranking_vendedores %}
+    <tr><td>{{ nombre }}</td><td>{{ d.ventas }}</td><td>${{ '{:,.0f}'.format(d.valor) }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">Sin ventas facturadas en este mes.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3>Aerolíneas más usadas</h3>
+  {% if ranking_aerolineas %}
+  <div style="position:relative; height:{{ 60 + ranking_aerolineas|length * 40 }}px;">
+    <canvas id="chartAerolineas"></canvas>
+  </div>
+  {% else %}
+  <p class="muted">Sin datos de proveedor de tiquete este mes.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3>Destinos más vendidos</h3>
+  {% if ranking_destinos %}
+  <div style="position:relative; height:{{ 60 + ranking_destinos|length * 40 }}px;">
+    <canvas id="chartDestinos"></canvas>
+  </div>
+  {% else %}
+  <p class="muted">Sin ventas facturadas este mes.</p>
+  {% endif %}
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+function barraHorizontal(id, etiquetas, valores, color) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  new Chart(el, {
+    type: 'bar',
+    data: { labels: etiquetas, datasets: [{ data: valores, backgroundColor: color }] },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true } }
+    }
+  });
+}
+barraHorizontal('chartVendedores',
+  {{ ranking_vendedores | map(attribute=0) | list | tojson }},
+  {{ ranking_vendedores | map('last') | map(attribute='valor') | list | tojson }},
+  '#0d3b66');
+barraHorizontal('chartAerolineas',
+  {{ ranking_aerolineas | map(attribute=0) | list | tojson }},
+  {{ ranking_aerolineas | map(attribute=1) | list | tojson }},
+  '#1a7f37');
+barraHorizontal('chartDestinos',
+  {{ ranking_destinos | map(attribute=0) | list | tojson }},
+  {{ ranking_destinos | map(attribute=1) | list | tojson }},
+  '#b06d00');
+</script>
+{% endblock %}

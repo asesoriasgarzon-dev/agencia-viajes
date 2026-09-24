@@ -51,6 +51,9 @@
     <a href="{{ url_for('ventas') }}"><strong>Agencia de Viajes</strong></a>
     {% if current_user.is_authenticated %}
       {% if current_user.rol in ['asesor','admin'] %}<a href="{{ url_for('venta_nueva') }}">Nuevo viaje</a>{% endif %}
+      {% if current_user.rol == 'admin' %}<a href="{{ url_for('reportes') }}">Reportes</a>{% endif %}
+      {% if current_user.rol == 'admin' %}<a href="{{ url_for('crm') }}">CRM</a>{% endif %}
+      {% if current_user.rol == 'admin' %}<a href="{{ url_for('admin_usuarios') }}">Usuarios</a>{% endif %}
       {% if current_user.rol == 'admin' %}<a href="{{ url_for('configuracion_exportables') }}">Config. exportables</a>{% endif %}
       {% if current_user.rol in ['admin','facturacion','caja'] %}<a href="{{ url_for('exportar_contador') }}">Exportar contador</a>{% endif %}
       {% if current_user.rol in ['admin','facturacion'] %}<a href="{{ url_for('exportar_dian') }}">Exportar DIAN</a>{% endif %}

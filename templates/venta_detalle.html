@@ -24,6 +24,13 @@
   <a class="btn" href="{{ url_for('venta_editar', venta_id=venta.id) }}">Editar / enviar a caja</a>
   {% endif %}
 
+  {% if venta.estado == 'facturado' and current_user.rol == 'admin' %}
+  <form method="post" action="{{ url_for('venta_eliminar', venta_id=venta.id) }}"
+        style="display:inline;" onsubmit="return confirm('¿Eliminar la venta #{{ venta.id }} en firme? Esto no se puede deshacer.');">
+    <button type="submit" style="background:var(--rojo);">Eliminar venta</button>
+  </form>
+  {% endif %}
+
   <table>
     <tr><th>Fecha de venta</th><td>{{ venta.fecha_venta.strftime('%d/%m/%Y') if venta.fecha_venta else '—' }}</td></tr>
     <tr><th>Sede</th><td>{{ venta.sede or '—' }}</td></tr>

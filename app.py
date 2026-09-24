@@ -27,6 +27,7 @@ from models import (
     ESTADOS,
     ExportConfig,
     Pasajero,
+    ROLES,
     Usuario,
     Venta,
     db,
@@ -658,6 +659,224 @@ def exportar_dian():
         rows.append([fila[c] for c in campos])
 
     return _csv_response("archivo_dian.csv", headers, rows)
+
+
+# --------------------------------------------------------------------------
+# Gestión de usuarios (crear asesores/caja/facturación) — solo admin
+# --------------------------------------------------------------------------
+
+
+@app.route("/admin/usuarios", methods=["GET", "POST"])
+@login_required
+@rol_requerido()
+def admin_usuarios():
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+        nombre = request.form.get("nombre", "").strip()
+        rol = request.form.get("rol", "")
+
+        if not username or not password or not nombre or rol not in ROLES:
+            flash("Completa usuario, contraseña, nombre y un rol válido.", "error")
+        elif Usuario.query.filter_by(username=username).first():
+            flash(f"El usuario '{username}' ya existe.", "error")
+        else:
+            u = Usuario(username=username, nombre=nombre, rol=rol)
+            u.set_password(password)
+            db.session.add(u)
+            db.session.commit()
+            flash(f"Usuario '{username}' ({rol}) creado.", "ok")
+        return redirect(url_for("admin_usuarios"))
+
+    usuarios = Usuario.query.order_by(Usuario.rol, Usuario.nombre).all()
+    return render_template("admin_usuarios.html", usuarios=usuarios, roles=ROLES)
+
+
+# --------------------------------------------------------------------------
+# Borrado controlado — solo admin, y solo cuando la venta ya está facturada
+# (todos los pasos previos cerrados). No hay reapertura: si algo se borra,
+# se borra en firme.
+# --------------------------------------------------------------------------
+
+
+@app.route("/venta/<int:venta_id>/eliminar", methods=["POST"])
+@login_required
+@rol_requerido()
+def venta_eliminar(venta_id):
+    venta = Venta.query.get_or_404(venta_id)
+    if venta.estado != "facturado":
+        flash(
+            "Solo se pueden eliminar ventas ya facturadas (con asesor, caja y "
+            "facturación ya cerrados).",
+            "error",
+        )
+        return redirect(url_for("venta_detalle", venta_id=venta.id))
+
+    db.session.delete(venta)
+    db.session.commit()
+    flash(f"Venta #{venta_id} eliminada.", "ok")
+    return redirect(url_for("ventas"))
+
+
+# --------------------------------------------------------------------------
+# Reportería / indicadores — solo admin. Se calcula sobre lo ya facturado,
+# no crea ningún dato nuevo: es otra salida de la misma fuente.
+# --------------------------------------------------------------------------
+
+
+def _ventas_facturadas_del_mes(mes):
+    try:
+        anio, mes_num = (int(x) for x in mes.split("-"))
+    except (ValueError, AttributeError):
+        hoy = date.today()
+        anio, mes_num, mes = hoy.year, hoy.month, hoy.strftime("%Y-%m")
+
+    todas = Venta.query.filter(Venta.estado == "facturado").all()
+    del_mes = [
+        v for v in todas
+        if v.fecha_venta and v.fecha_venta.year == anio and v.fecha_venta.month == mes_num
+    ]
+    meses_disponibles = sorted(
+        {v.fecha_venta.strftime("%Y-%m") for v in todas if v.fecha_venta}, reverse=True
+    )
+    if mes not in meses_disponibles:
+        meses_disponibles.insert(0, mes)
+    return mes, del_mes, meses_disponibles
+
+
+def _calcular_rankings(del_mes):
+    por_asesor, por_aerolinea, por_destino = {}, {}, {}
+    for v in del_mes:
+        nombre_asesor = v.asesor.nombre if v.asesor else "—"
+        por_asesor.setdefault(nombre_asesor, {"valor": 0.0, "ventas": 0})
+        por_asesor[nombre_asesor]["valor"] += float(v.valor_venta_real or 0)
+        por_asesor[nombre_asesor]["ventas"] += 1
+        if v.proveedor_tiquete:
+            por_aerolinea[v.proveedor_tiquete] = por_aerolinea.get(v.proveedor_tiquete, 0) + 1
+        if v.destino:
+            por_destino[v.destino] = por_destino.get(v.destino, 0) + 1
+
+    return (
+        sorted(por_asesor.items(), key=lambda kv: kv[1]["valor"], reverse=True),
+        sorted(por_aerolinea.items(), key=lambda kv: kv[1], reverse=True),
+        sorted(por_destino.items(), key=lambda kv: kv[1], reverse=True),
+    )
+
+
+@app.route("/reportes")
+@login_required
+@rol_requerido()
+def reportes():
+    mes, del_mes, meses_disponibles = _ventas_facturadas_del_mes(
+        request.args.get("mes", date.today().strftime("%Y-%m"))
+    )
+    ranking_vendedores, ranking_aerolineas, ranking_destinos = _calcular_rankings(del_mes)
+
+    return render_template(
+        "reportes.html",
+        mes=mes,
+        meses_disponibles=meses_disponibles,
+        ranking_vendedores=ranking_vendedores,
+        ranking_aerolineas=ranking_aerolineas,
+        ranking_destinos=ranking_destinos,
+        total_facturado=sum(float(v.valor_venta_real or 0) for v in del_mes),
+        total_ventas=len(del_mes),
+    )
+
+
+@app.route("/reportes/exportar")
+@login_required
+@rol_requerido()
+def reportes_exportar():
+    mes, del_mes, _ = _ventas_facturadas_del_mes(
+        request.args.get("mes", date.today().strftime("%Y-%m"))
+    )
+    ranking_vendedores, ranking_aerolineas, ranking_destinos = _calcular_rankings(del_mes)
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["Reporte de ventas", mes])
+    writer.writerow([])
+    writer.writerow(["Vendedor", "Ventas", "Valor facturado"])
+    for nombre, d in ranking_vendedores:
+        writer.writerow([nombre, d["ventas"], round(d["valor"], 2)])
+    writer.writerow([])
+    writer.writerow(["Aerolínea", "Veces usada"])
+    for nombre, c in ranking_aerolineas:
+        writer.writerow([nombre, c])
+    writer.writerow([])
+    writer.writerow(["Destino", "Veces vendido"])
+    for nombre, c in ranking_destinos:
+        writer.writerow([nombre, c])
+
+    return Response(
+        buffer.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=reporte_{mes}.csv"},
+    )
+
+
+# --------------------------------------------------------------------------
+# CRM automático — deriva un perfil por cliente agrupando los pasajeros por
+# número de documento A TRAVÉS de todas las ventas. No es una captura nueva:
+# es otra vista de la misma información de Pasajero/Venta. Solo admin.
+# --------------------------------------------------------------------------
+
+
+@app.route("/crm")
+@login_required
+@rol_requerido()
+def crm():
+    pasajeros = Pasajero.query.filter(
+        Pasajero.numero_documento.isnot(None), Pasajero.numero_documento != ""
+    ).all()
+
+    perfiles = {}
+    for p in pasajeros:
+        doc = p.numero_documento.strip()
+        if not doc:
+            continue
+        perfil = perfiles.setdefault(doc, {"nombre": "", "telefono": None, "ventas": {}})
+        nombre = f"{p.nombres or ''} {p.apellidos or ''}".strip()
+        if nombre:
+            perfil["nombre"] = nombre
+        if p.telefono:
+            perfil["telefono"] = p.telefono
+        if p.venta:
+            perfil["ventas"][p.venta.id] = p.venta
+
+    clientes = []
+    for doc, perfil in perfiles.items():
+        ventas_cliente = list(perfil["ventas"].values())
+        destinos = sorted({v.destino for v in ventas_cliente if v.destino})
+        acompanantes = set()
+        monto_como_titular = 0.0
+        veces_titular = 0
+        for v in ventas_cliente:
+            for otro in v.pasajeros:
+                if otro.numero_documento != doc:
+                    nom_otro = f"{otro.nombres or ''} {otro.apellidos or ''}".strip()
+                    if nom_otro:
+                        acompanantes.add(nom_otro)
+            principal = v.pasajero_principal
+            if principal and principal.numero_documento == doc:
+                monto_como_titular += float(v.valor_venta_real or 0)
+                veces_titular += 1
+        ultima_venta = max(ventas_cliente, key=lambda v: v.fecha_creacion) if ventas_cliente else None
+        clientes.append({
+            "nombre": perfil["nombre"] or "—",
+            "documento": doc,
+            "telefono": perfil["telefono"],
+            "num_viajes": len(ventas_cliente),
+            "veces_titular": veces_titular,
+            "monto_como_titular": monto_como_titular,
+            "destinos": destinos,
+            "acompanantes": sorted(acompanantes),
+            "ultima_venta_id": ultima_venta.id if ultima_venta else None,
+        })
+
+    clientes.sort(key=lambda c: c["num_viajes"], reverse=True)
+    return render_template("crm.html", clientes=clientes)
 
 
 # --------------------------------------------------------------------------
