@@ -1,14 +1,126 @@
 {% extends "base.html" %}
 {% block title %}Ingresar{% endblock %}
+{% block body_class %}login-page{% endblock %}
+{% block extra_css %}
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  .login-page header { display:none; }
+  .login-page main { max-width:none; margin:0; padding:0; }
+  .login-page main > .flash { display:none; }
+
+  .hero { position:relative; min-height:100vh; overflow:hidden; display:flex; align-items:center; justify-content:center;
+          background:linear-gradient(180deg, #0b2f5b 0%, #1560a8 30%, #2aa5c9 58%, #ffb56b 82%, #ff8a5c 100%); }
+  .hero-fondo { position:absolute; inset:0; width:100%; height:100%; }
+  .nube { animation:derivar 70s ease-in-out infinite alternate; }
+  .nube.n2 { animation-duration:95s; animation-delay:-20s; }
+  .nube.n3 { animation-duration:120s; animation-delay:-45s; }
+  @keyframes derivar { from { transform:translateX(-40px); } to { transform:translateX(90px); } }
+  .avion { animation:volar 9s ease-in-out infinite alternate; }
+  @keyframes volar { from { transform:translate(0,0) rotate(0deg); } to { transform:translate(26px,-14px) rotate(-3deg); } }
+  @media (prefers-reduced-motion: reduce) { .nube, .avion { animation:none; } }
+
+  .hero-contenido { position:relative; z-index:2; width:100%; max-width:1040px; padding:32px 24px;
+                    display:grid; grid-template-columns:1.15fr 1fr; gap:48px; align-items:center; }
+  .marca { color:#fff; }
+  .marca .sello { display:inline-flex; align-items:center; gap:10px; background:rgba(255,255,255,.16);
+                  border:1px solid rgba(255,255,255,.35); padding:8px 16px; border-radius:999px; font-size:14px; font-weight:bold; letter-spacing:.3px; }
+  .marca h1 { font-size:42px; line-height:1.15; margin:22px 0 14px; font-weight:800; text-shadow:0 2px 14px rgba(6,30,70,.35); }
+  .marca h1 span { color:#ffd479; }
+  .marca p { font-size:17px; line-height:1.55; margin:0 0 24px; max-width:460px; color:#eaf6ff; text-shadow:0 1px 8px rgba(6,30,70,.35); }
+  .chips { display:flex; flex-wrap:wrap; gap:10px; }
+  .chip { display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,.92); color:#0b2f5b;
+          padding:8px 14px; border-radius:999px; font-size:13px; font-weight:bold; }
+  .chip svg { width:16px; height:16px; }
+
+  .tarjeta-login { background:#fff; border-radius:20px; padding:34px 32px 30px; box-shadow:0 24px 60px rgba(6,30,70,.38); }
+  .tarjeta-login .franja { height:6px; border-radius:6px; margin:-34px -32px 26px; border-radius:20px 20px 0 0;
+                           background:linear-gradient(90deg, #ff8a5c, #ffd479, #2aa5c9, #1560a8); }
+  .tarjeta-login h2 { margin:0 0 4px; font-size:26px; color:#0b2f5b; }
+  .tarjeta-login .sub { margin:0 0 18px; color:#5a6b7a; font-size:14px; }
+  .tarjeta-login input { height:46px; border-radius:10px; font-size:15px; padding:0 14px; border:1px solid #cfd9e3; }
+  .tarjeta-login input:focus { outline:none; border-color:#1560a8; box-shadow:0 0 0 3px rgba(21,96,168,.2); }
+  .tarjeta-login button { width:100%; height:48px; margin-top:22px; font-size:16px; font-weight:bold; border-radius:10px;
+                          background:linear-gradient(90deg, #0b4f9c, #1a8fc0); }
+  .tarjeta-login .flash { margin-bottom:14px; }
+
+  @media (max-width:860px) {
+    .hero-contenido { grid-template-columns:1fr; gap:28px; padding:24px 18px; }
+    .marca h1 { font-size:32px; }
+    .marca p { font-size:15px; }
+    .avion, .ruta { display:none; }
+  }
+</style>
+{% endblock %}
 {% block content %}
-<div class="card" style="max-width:360px; margin:60px auto;">
-  <h2>Ingresar</h2>
-  <form method="post">
-    <label>Usuario</label>
-    <input type="text" name="username" required autofocus>
-    <label>Contraseña</label>
-    <input type="password" name="password" required>
-    <div style="margin-top:18px;"><button type="submit">Entrar</button></div>
-  </form>
+<div class="hero">
+  <svg class="hero-fondo" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <radialGradient id="sol" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#fff3c4" stop-opacity="1"/>
+        <stop offset="45%" stop-color="#ffd479" stop-opacity=".75"/>
+        <stop offset="100%" stop-color="#ffb56b" stop-opacity="0"/>
+      </radialGradient>
+      <g id="nube">
+        <ellipse cx="70" cy="46" rx="70" ry="24"/>
+        <ellipse cx="110" cy="30" rx="42" ry="26"/>
+        <ellipse cx="34" cy="36" rx="34" ry="22"/>
+      </g>
+    </defs>
+
+    <circle cx="1130" cy="640" r="230" fill="url(#sol)"/>
+    <circle cx="1130" cy="640" r="70" fill="#fff3c4"/>
+
+    <g fill="#fff" opacity=".85">
+      <g class="nube n1"><use href="#nube" transform="translate(120 120) scale(1.5)"/></g>
+      <g class="nube n2"><use href="#nube" transform="translate(880 90) scale(1.1)" opacity=".8"/></g>
+      <g class="nube n3"><use href="#nube" transform="translate(560 300) scale(1.9)" opacity=".55"/></g>
+      <g class="nube n2"><use href="#nube" transform="translate(1180 330) scale(1.2)" opacity=".7"/></g>
+    </g>
+
+    <path class="ruta" d="M -30 330 Q 400 330 690 150 T 1500 30" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="4 12" stroke-linecap="round" opacity=".75"/>
+    <g class="avion">
+      <g transform="translate(690 150) rotate(-30) scale(3.6)">
+        <path d="M2 21l21-9L2 3v7l15 2-15 2z" fill="#fff" stroke="#0b2f5b" stroke-width=".5" stroke-opacity=".35"/>
+      </g>
+    </g>
+
+    <path d="M0 740 Q 180 700 360 740 T 720 740 T 1080 740 T 1440 740 V900 H0Z" fill="#1a8fc0" opacity=".55"/>
+    <path d="M0 790 Q 200 750 400 790 T 800 790 T 1200 790 T 1600 790 V900 H0Z" fill="#0f6ea8" opacity=".75"/>
+    <path d="M0 840 Q 240 805 480 840 T 960 840 T 1440 840 V900 H0Z" fill="#0b4f86"/>
+  </svg>
+
+  <div class="hero-contenido">
+    <div class="marca">
+      <span class="sello">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>
+        Agencia de Viajes
+      </span>
+      <h1>Del primer contacto a la factura, <span>en un solo lugar</span></h1>
+      <p>Una sola captura. Caja y facturación ven lo mismo al instante, sin volver a digitar nada.</p>
+      <div class="chips">
+        <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="#1560a8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Captura única</span>
+        <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="#1560a8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Tiempo real</span>
+        <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="#1560a8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>Reportes y CRM</span>
+      </div>
+    </div>
+
+    <div class="tarjeta-login">
+      <div class="franja"></div>
+      <h2>Bienvenido</h2>
+      <p class="sub">Ingresa con tu usuario para continuar.</p>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="flash flash-{{ 'ok' if category == 'ok' else 'error' }}">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+      <form method="post">
+        <label>Usuario</label>
+        <input type="text" name="username" required autofocus autocomplete="username">
+        <label>Contraseña</label>
+        <input type="password" name="password" required autocomplete="current-password">
+        <button type="submit">Entrar</button>
+      </form>
+    </div>
+  </div>
 </div>
 {% endblock %}

@@ -49,8 +49,9 @@
   .volver:hover { text-decoration:underline; }
   @media (max-width: 700px) { .stats { grid-template-columns:repeat(2, 1fr); } }
 </style>
+{% block extra_css %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
 <header>
   <div>
     <a href="{{ url_for('ventas') }}"><strong>Agencia de Viajes</strong></a>
